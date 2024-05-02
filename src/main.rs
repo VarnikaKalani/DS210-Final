@@ -2,6 +2,10 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::collections::BinaryHeap;
 use std::cmp::Reverse;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 fn load_csv(file_path: &str, size: u32) -> Result<Vec<Vec<u32>>, io::Error> {
     let file = File::open(file_path)?;
@@ -65,18 +69,38 @@ fn calculate_average_distance(distance_lists: Vec<Vec<u32>>) -> f64 {
     total_distance / num_pairs as f64
 }
 
+fn select_random_sample<T: Clone>(nodes: &[T], sample_size: usize) -> Vec<T> {
+    let mut rng = thread_rng();
+    nodes.choose_multiple(&mut rng, sample_size).cloned().collect()
+}
 
 fn main() {
-    let file_path = "./high-school-contacts.csv";
-    let graph_size = 327;
+    let file_path = "./reality-call.csv";
+    let graph_size = 6810;
     match load_csv(file_path, graph_size) {
         Ok(adjacency_matrix) => {
-            let mut distance_lists = Vec::new();
-            for node in 0..graph_size {
-                let distances = dijkstra(&adjacency_matrix, node as usize);
-                distance_lists.push(distances);
+            let num_nodes = adjacency_matrix.len();
+            let sample_size = (num_nodes as f64 * 0.1) as usize; // 10% sample size
+            let sample_nodes = select_random_sample(&(0..num_nodes).collect::<Vec<_>>(), sample_size);
+
+            let distance_lists: Arc<Mutex<Vec<Vec<u32>>>> = Arc::new(Mutex::new(Vec::new()));
+            let handles: Vec<_> = sample_nodes.into_iter().map(|node| {
+                let adjacency_matrix = adjacency_matrix.clone();
+                let distance_lists = distance_lists.clone();
+                thread::spawn(move || {
+                    println!("Calculating distances from node {}", node);
+                    let distances = dijkstra(&adjacency_matrix, node as usize);
+                    let mut distance_lists = distance_lists.lock().unwrap();
+                    distance_lists.push(distances);
+                })
+            }).collect();
+
+            for handle in handles {
+                handle.join().unwrap();
             }
-            let avg_distance = calculate_average_distance(distance_lists);
+
+            let distance_lists = distance_lists.lock().unwrap();
+            let avg_distance = calculate_average_distance(distance_lists.clone());
             println!("Average distance: {}", avg_distance);
 
         }
