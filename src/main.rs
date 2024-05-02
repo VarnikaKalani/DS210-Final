@@ -50,6 +50,20 @@ fn dijkstra(graph: &Vec<Vec<u32>>, source: usize) -> Vec<u32> {
     distances
 }
 
+fn calculate_average_distance(distance_lists: Vec<Vec<u32>>) -> f64 {
+    let num_pairs = distance_lists.len() * (distance_lists.len() - 1) / 2;
+    let mut total_distance: f64 = 0.0;
+
+    for distances in distance_lists {
+        for &distance in &distances {
+            if distance != u32::MAX {
+                total_distance += distance as f64;
+            }
+        }
+    }
+
+    total_distance / num_pairs as f64
+}
 
 
 fn main() {
