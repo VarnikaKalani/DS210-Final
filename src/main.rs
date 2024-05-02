@@ -57,7 +57,13 @@ fn main() {
     let graph_size = 327;
     match load_csv(file_path, graph_size) {
         Ok(adjacency_matrix) => {
-            
+            let mut distance_lists = Vec::new();
+            for node in 0..graph_size {
+                let distances = dijkstra(&adjacency_matrix, node as usize);
+                distance_lists.push(distances);
+            }
+            let avg_distance = calculate_average_distance(distance_lists);
+            println!("Average distance: {}", avg_distance);
 
         }
         Err(err) => {
